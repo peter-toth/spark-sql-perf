@@ -22,6 +22,7 @@ import scala.language.implicitConversions
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
+import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.execution.SparkPlan
 
 
@@ -31,7 +32,8 @@ class Query(
     buildDataFrame: => DataFrame,
     val description: String = "",
     val sqlText: Option[String] = None,
-    override val executionMode: ExecutionMode = ExecutionMode.ForeachResults)
+    override val executionMode: ExecutionMode = ExecutionMode.ForeachResults,
+    val measureRuleTimes: Boolean = false)
   extends Benchmarkable with Serializable {
 
   private implicit def toOption[A](a: A): Option[A] = Option(a)
@@ -67,6 +69,11 @@ class Query(
       val dataFrame = buildDataFrame
       val queryExecution = dataFrame.queryExecution
       // We are not counting the time of ScalaReflection.convertRowToScala.
+
+      if (measureRuleTimes) {
+        RuleExecutor.resetMetrics()
+      }
+
       val parsingTime = measureTimeMs {
         queryExecution.logical
       }
@@ -78,6 +85,12 @@ class Query(
       }
       val planningTime = measureTimeMs {
         queryExecution.executedPlan
+      }
+
+      val ruleTimeSpent = if (measureRuleTimes) {
+        Some(RuleExecutor.dumpTimeSpent())
+      } else {
+        None
       }
 
       val breakdownResults = if (includeBreakdown) {
@@ -149,7 +162,8 @@ class Query(
         executionTime = executionTime,
         result = result,
         queryExecution = dataFrame.queryExecution.toString,
-        breakDown = breakdownResults)
+        breakDown = breakdownResults,
+        parameters = ruleTimeSpent.map("ruleTimeSpent" -> _).toMap)
     } catch {
       case e: Exception =>
          BenchmarkResult(

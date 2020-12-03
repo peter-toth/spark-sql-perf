@@ -193,8 +193,9 @@ abstract class Benchmark(
         name: String,
         sqlText: String,
         description: String,
-        executionMode: ExecutionMode = ExecutionMode.ForeachResults): Query = {
-      new Query(name, sqlContext.sql(sqlText), description, Some(sqlText), executionMode)
+        executionMode: ExecutionMode = ExecutionMode.ForeachResults,
+        measureRuleTimes: Boolean = false): Query = {
+      new Query(name, sqlContext.sql(sqlText), description, Some(sqlText), executionMode, measureRuleTimes)
     }
 
     def apply(
