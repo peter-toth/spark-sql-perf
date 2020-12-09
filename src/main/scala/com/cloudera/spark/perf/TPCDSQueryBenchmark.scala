@@ -2,14 +2,14 @@ package com.cloudera.spark.perf
 
 import java.nio.file.Paths
 
-import scala.util.Random
+import scala.util.{Random, Try}
 
 import scopt.OptionParser
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 
 import com.databricks.spark.sql.perf.ExecutionMode.{CollectResults, ForeachResults, WriteParquet}
-import com.databricks.spark.sql.perf.{ExecutionMode, Query}
+import com.databricks.spark.sql.perf.{Benchmark, ExecutionMode, Query, Variation}
 import com.databricks.spark.sql.perf.tpcds.TPCDS
 import com.databricks.spark.sql.perf.tpcds.TPCDSTables
 
@@ -27,8 +27,9 @@ case class TPCDSQueryBenchmarkConfig(
     additionalQueries: Option[String] = None,
     measureRuleTimes: Boolean = false,
     executionMode: ExecutionMode = CollectResults,
-    saveToParquetPath: String = "") {
-  lazy val realExecutionMode = if (executionMode == TPCDSQueryBenchmark.dummyWriteParquet) WriteParquet(saveToParquetPath) else executionMode
+    saveToParquetPath: String = "",
+    configVariations: Option[Map[String, Seq[String]]] = None) {
+  def realExecutionMode = if (executionMode == TPCDSQueryBenchmark.dummyWriteParquet) WriteParquet(saveToParquetPath) else executionMode
 }
 
 object TPCDSQueryBenchmark {
@@ -85,6 +86,9 @@ object TPCDSQueryBenchmark {
       opt[String]("saveToParquetPath")
         .action((x, c) => c.copy(saveToParquetPath = x))
         .text(s"the path where $dummyWriteParquet execution mode should store the results")
+      opt[Map[String, String]]("configVariations")
+        .action((x, c) => c.copy(configVariations = Some(x.mapValues(_.split('|')))))
+        .text(s"the config variations to run the queries with, default empty")
       checkConfig(c => if (c.executionMode == dummyWriteParquet && c.saveToParquetPath == null) failure(s"writeParquetPath should be defined when executionMode is $dummyWriteParquet") else success)
       help("help")
         .text("prints this usage text")
@@ -135,7 +139,10 @@ object TPCDSQueryBenchmark {
           sql(s"DROP DATABASE IF EXISTS $database CASCADE")
           false
         } else {
-          sql("SHOW DATABASES").filter(col("databaseName") === database).count > 0
+          Try {
+            sql(s"USE $database")
+            true
+          }.getOrElse(false)
         }
 
         if (!databaseExists) {
@@ -162,9 +169,12 @@ object TPCDSQueryBenchmark {
         val experiment = tpcds.runExperiment(
           queries,
           iterations = config.iterations,
-          resultLocation = config.resultLocation,
+          variations = config.configVariations.map(_.toSeq.map { case (key, values) =>
+            Variation(s"ConfigVariation $key", values) { case value => sqlContext.setConf(key, value) }
+          }).getOrElse(Benchmark.standardRun),
           tags = Map(("database" -> database) +:
-            config.getClass.getDeclaredFields.map(_.getName).zip(config.productIterator.map(_.toString).to): _*))
+            config.getClass.getDeclaredFields.map(_.getName).zip(config.productIterator.map(_.toString).to): _*),
+          resultLocation = config.resultLocation)
 
         println(experiment.toString)
 

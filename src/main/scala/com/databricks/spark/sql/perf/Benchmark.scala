@@ -102,7 +102,7 @@ abstract class Benchmark(
       executionsToRun: Seq[Benchmarkable],
       includeBreakdown: Boolean = false,
       iterations: Int = 3,
-      variations: Seq[Variation[_]] = Seq(Variation("StandardRun", Seq("true")) { _ => {} }),
+      variations: Seq[Variation[_]] = standardRun,
       tags: Map[String, String] = Map.empty,
       timeout: Long = 0L,
       resultLocation: String = resultsLocation,
@@ -287,6 +287,7 @@ case class Table(
 
 
 object Benchmark {
+  val standardRun = Seq(Variation("StandardRun", Seq("true")) { _ => {} })
 
   class ExperimentStatus(
       executionsToRun: Seq[Benchmarkable],
