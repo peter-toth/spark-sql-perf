@@ -186,6 +186,7 @@ object TPCDSQueryBenchmark {
 
         experiment.getCurrentResults
           .drop("queryExecution")
+          .drop("ruleTimeSpent")
           .show(1000, false)
 
         experiment.getCurrentResults
