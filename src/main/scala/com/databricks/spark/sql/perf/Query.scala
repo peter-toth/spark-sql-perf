@@ -163,7 +163,7 @@ class Query(
         result = result,
         queryExecution = dataFrame.queryExecution.toString,
         breakDown = breakdownResults,
-        parameters = ruleTimeSpent.map("ruleTimeSpent" -> _).toMap)
+        ruleTimeSpent = ruleTimeSpent)
     } catch {
       case e: Exception =>
          BenchmarkResult(
