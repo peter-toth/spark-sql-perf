@@ -394,8 +394,9 @@ object Benchmark {
             startTime = System.currentTimeMillis()
 
             val singleResultT = Try {
-              q.benchmark(includeBreakdown, setup, currentMessages, timeout,
+              val result = q.benchmark(includeBreakdown, setup, currentMessages, timeout,
                 forkThread=forkThread)
+              result.copy(parameters = result.parameters ++ currentOptions.toMap)
             }
 
             singleResultT match {

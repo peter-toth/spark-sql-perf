@@ -189,8 +189,8 @@ object TPCDSQueryBenchmark {
           .show(1000, false)
 
         experiment.getCurrentResults
-          .withColumn("Runtime", (col("parsingTime") + col("analysisTime") + col("optimizationTime") + col("planningTime") + col("executionTime")) / 1000.0)
-          .select("Name", "Runtime")
+          .withColumn("runtime", (col("parsingTime") + col("analysisTime") + col("optimizationTime") + col("planningTime") + col("executionTime")) / 1000.0)
+          .select("name", "parameters", "runtime")
           .show(1000, false)
       } else {
         println("No queries to run.")
