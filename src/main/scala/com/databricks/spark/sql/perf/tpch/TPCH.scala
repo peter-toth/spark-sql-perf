@@ -17,7 +17,7 @@
 package com.databricks.spark.sql.perf.tpch
 import scala.sys.process._
 
-import com.databricks.spark.sql.perf.{Benchmark, BlockingLineStream, DataGenerator, Table, Tables}
+import com.databricks.spark.sql.perf.{Benchmark, BlockingLineStream, DataGenerator, ExecutionMode, Tables}
 import com.databricks.spark.sql.perf.ExecutionMode.CollectResults
 import org.apache.commons.io.IOUtils
 
@@ -167,11 +167,11 @@ class TPCHTables(
 class TPCH(@transient sqlContext: SQLContext)
   extends Benchmark(sqlContext) {
 
-  val queries = (1 to 22).map { q =>
+  def queries(executionMode: ExecutionMode = CollectResults, measureRuleTimes: Boolean = false) = (1 to 22).map { q =>
     val queryContent: String = IOUtils.toString(
       getClass().getClassLoader().getResourceAsStream(s"tpch/queries/$q.sql"))
     Query(s"Q$q", queryContent, description = "TPCH Query",
-      executionMode = CollectResults)
+      executionMode = executionMode, measureRuleTimes = measureRuleTimes)
   }
-  val queriesMap = queries.map(q => q.name.split("-").get(0) -> q).toMap
+  val queriesMap = queries().map(q => q.name.split("-").get(0) -> q).toMap
 }

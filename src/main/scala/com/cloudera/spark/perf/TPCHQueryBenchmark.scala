@@ -8,27 +8,27 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 
 import com.databricks.spark.sql.perf.{Benchmark, Query, Variation}
-import com.databricks.spark.sql.perf.tpcds.TPCDS
-import com.databricks.spark.sql.perf.tpcds.TPCDSTables
+import com.databricks.spark.sql.perf.tpch.TPCH
+import com.databricks.spark.sql.perf.tpch.TPCHTables
 
-object TPCDSQueryBenchmark extends QueryBenchmark {
-  override def name: String = "TPCDSQueryBenchmark"
+object TPCHQueryBenchmark extends QueryBenchmark {
+  override def name: String = "TPCHQueryBenchmark"
 
   override def ver: String = "0.1.0"
 
   def run(config: QueryBenchmarkConfig): Unit = {
     val spark = SparkSession.builder
-      .appName("TPCDSQueryBenchmark")
+      .appName("TPCHQueryBenchmark")
       .enableHiveSupport()
       .getOrCreate()
 
     import spark._
 
     try {
-      val tpcds = new TPCDS(sqlContext)
+      val tpch = new TPCH(sqlContext)
       val queries = {
         val queries = if (config.runDefaultQueries) {
-          tpcds.tpcds2_4Queries(config.realExecutionMode, config.measureRuleTimes)
+          tpch.queries(config.realExecutionMode, config.measureRuleTimes)
         } else {
           Seq.empty
         } ++ config.additionalQueries.toSeq.flatMap { aq =>
@@ -64,8 +64,8 @@ object TPCDSQueryBenchmark extends QueryBenchmark {
         if (!databaseExists) {
           sql(s"CREATE DATABASE $database")
 
-          val tables = new TPCDSTables(sqlContext,
-            dsdgenDir = "/tmp/tpcds-kit/tools", // dummy dsdgenDir
+          val tables = new TPCHTables(sqlContext,
+            dbgenDir = "/tmp/tpch-kit/tools", // dummy dbdgenDir
             scaleFactor = "5") // dummy scaleFactor
 
           // Create metastore tables in a specified database for your data.
@@ -82,7 +82,7 @@ object TPCDSQueryBenchmark extends QueryBenchmark {
 
         sql(s"USE $database")
 
-        val experiment = tpcds.runExperiment(
+        val experiment = tpch.runExperiment(
           queries,
           iterations = config.iterations,
           variations = config.configVariations.map(_.toSeq.map { case (key, values) =>
