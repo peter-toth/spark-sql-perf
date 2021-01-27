@@ -4,8 +4,9 @@ import java.nio.file.Paths
 
 import scala.util.{Random, Try}
 
+import org.apache.commons.io.IOUtils
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, udf}
 
 import com.databricks.spark.sql.perf.{Benchmark, Query, Variation}
 import com.databricks.spark.sql.perf.tpch.TPCH
@@ -21,6 +22,12 @@ object TPCHQueryBenchmark extends QueryBenchmark {
       .appName("TPCHQueryBenchmark")
       .enableHiveSupport()
       .getOrCreate()
+
+    val sleep = udf((input: Int) => {
+      Thread.sleep(input)
+      input
+    })
+    spark.udf.register("sleep", sleep.asNondeterministic())
 
     import spark._
 
@@ -44,8 +51,17 @@ object TPCHQueryBenchmark extends QueryBenchmark {
         } else {
           allQueries
         }
+        val specialQueries = if (config.runDefaultQueries) {
+          val names = Seq("sleep1s", "sleep10s", "sleep1m", "sleep10m")
+          names.map { name =>
+            val sql = IOUtils.toString(this.getClass().getClassLoader().getResourceAsStream(s"special/$name.sql"))
+            name -> new Query(name, sqlContext.sql(sql), description = s"Special query - $name", Some(sql), config.realExecutionMode, false)
+          }.toMap
+        } else {
+          Map.empty[String, Query]
+        }
         val orderedQueries = if (config.queryOrder.nonEmpty) {
-          config.queryOrder.flatMap(name => filteredQueries.find(_.name == name))
+          config.queryOrder.flatMap(name => filteredQueries.find(_.name == name).orElse(specialQueries.get(name)))
         } else {
           filteredQueries
         }
