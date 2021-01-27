@@ -396,7 +396,7 @@ object Benchmark {
             val singleResultT = Try {
               val result = q.benchmark(includeBreakdown, setup, currentMessages, timeout,
                 forkThread=forkThread)
-              result.copy(parameters = result.parameters ++ currentOptions.toMap)
+              result.copy(parameters = result.parameters ++ currentOptions.toMap ++ Map("Iteration" -> s"$i"))
             }
 
             singleResultT match {
