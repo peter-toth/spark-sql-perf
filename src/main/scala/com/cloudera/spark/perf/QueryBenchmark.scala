@@ -17,7 +17,8 @@ case class QueryBenchmarkConfig(
     randomizeQueries: Boolean = false,
     timeout: Int = 1,
     analyzeTables: Boolean = false,
-    queryFilter: Seq[String] = Seq.empty,
+    queryFilter: Set[String] = Set.empty,
+    queryOrder: Seq[String] = Seq.empty,
     runDefaultQueries: Boolean = true,
     additionalQueries: Option[String] = None,
     measureRuleTimes: Boolean = false,
@@ -69,8 +70,11 @@ abstract class QueryBenchmark {
         .action((x, c) => c.copy(analyzeTables = x))
         .text("set to true if tables should be analized (CBO needs it) before running queries, default false")
       opt[Seq[String]]("queryFilter")
-        .action((x, c) => c.copy(queryFilter = x))
-        .text("the list of query names separated with comma to filter queries, default empty")
+        .action((x, c) => c.copy(queryFilter = x.toSet))
+        .text("the set of query names separated with comma to filter queries, default empty")
+      opt[Seq[String]]("queryOrder")
+        .action((x, c) => c.copy(queryOrder = x))
+        .text("the list of query names separated with comma to run in order, default empty")
       opt[Boolean]("runDefaultQueries")
         .action((x, c) => c.copy(runDefaultQueries = x))
         .text("set to false if default TPCDS 2.4 queries shouldn't run, default true")

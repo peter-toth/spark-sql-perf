@@ -27,25 +27,32 @@ object TPCHQueryBenchmark extends QueryBenchmark {
     try {
       val tpch = new TPCH(sqlContext)
       val queries = {
-        val queries = if (config.runDefaultQueries) {
+        val defaultQueries = if (config.runDefaultQueries) {
           tpch.queries(config.realExecutionMode, config.measureRuleTimes)
         } else {
           Seq.empty
-        } ++ config.additionalQueries.toSeq.flatMap { aq =>
+        }
+        val additionalQueries = config.additionalQueries.toSeq.flatMap { aq =>
           sparkContext.wholeTextFiles(aq).collect().map { case (file, sql) =>
             val queryName = Paths.get(file).getFileName().toString()
             new Query(queryName, sqlContext.sql(sql), description = s"Additional query - $file", Some(sql), config.realExecutionMode, config.measureRuleTimes)
           }
         }
+        val allQueries = defaultQueries ++ additionalQueries
         val filteredQueries = if (config.queryFilter.nonEmpty) {
-          queries.filter(q => config.queryFilter.contains(q.name))
+          allQueries.filter(q => config.queryFilter.contains(q.name))
         } else {
-          queries
+          allQueries
         }
-        if (config.randomizeQueries) {
-          Random.shuffle(filteredQueries)
+        val orderedQueries = if (config.queryOrder.nonEmpty) {
+          config.queryOrder.flatMap(name => filteredQueries.find(_.name == name))
         } else {
           filteredQueries
+        }
+        if (config.randomizeQueries) {
+          Random.shuffle(orderedQueries)
+        } else {
+          orderedQueries
         }
       }
       if (queries.nonEmpty) {
